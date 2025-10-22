@@ -101,25 +101,67 @@ const getLocationIcon = (type: LocationType) => {
 };
 
 const calculateRoute = (start: RoutePoint, end: Location): RoutePoint[] => {
-  const route: RoutePoint[] = [start];
-  
-  const mainCorridor = { x: start.x, y: 50 };
+  const route: RoutePoint[] = [{ ...start, location: { id: 'start', name: 'Вход', type: 'checkin', x: start.x, y: start.y } }];
   
   if (end.y === 20) {
-    route.push(mainCorridor);
+    if (start.y !== 50) {
+      route.push({ x: start.x, y: 65, location: { id: 'c1-point', name: 'Коридор 1 этажа', type: 'elevator', x: start.x, y: 65 } });
+      route.push({ x: start.x, y: 50, location: { id: 'main-c', name: 'Главный коридор', type: 'elevator', x: start.x, y: 50 } });
+    }
     
     const escalator = end.x <= 50 ? locations.find(l => l.id === 'e1')! : locations.find(l => l.id === 'e2')!;
+    
+    if (start.x !== escalator.x) {
+      const midX = start.x < escalator.x ? (start.x + escalator.x) / 2 : (escalator.x + start.x) / 2;
+      route.push({ x: midX, y: 50, location: { id: 'mid-corr', name: 'Переход', type: 'elevator', x: midX, y: 50 } });
+    }
+    
     route.push({ x: escalator.x, y: 50, location: escalator });
-    route.push({ x: escalator.x, y: 20 });
+    route.push({ x: escalator.x, y: 35, location: { id: 'esc-mid', name: 'Верхний переход', type: 'elevator', x: escalator.x, y: 35 } });
+    route.push({ x: escalator.x, y: 20, location: { id: 'top-corr', name: 'Коридор 2 этажа', type: 'elevator', x: escalator.x, y: 20 } });
+    
+    if (escalator.x !== end.x) {
+      const midTopX = escalator.x < end.x ? (escalator.x + end.x) / 2 : (end.x + escalator.x) / 2;
+      route.push({ x: midTopX, y: 20, location: { id: 'top-mid', name: 'Переход', type: 'elevator', x: midTopX, y: 20 } });
+    }
+    
     route.push({ x: end.x, y: 20, location: end });
   } else if (end.y === 80) {
+    if (start.y !== 80) {
+      route.push({ x: start.x, y: 75, location: { id: 'corr-near', name: 'Коридор', type: 'elevator', x: start.x, y: 75 } });
+    }
+    
+    if (start.x !== end.x) {
+      const midBottomX = (start.x + end.x) / 2;
+      route.push({ x: midBottomX, y: 80, location: { id: 'bottom-mid', name: 'Переход', type: 'elevator', x: midBottomX, y: 80 } });
+    }
+    
     route.push({ x: end.x, y: end.y, location: end });
   } else if (end.y === 35) {
-    route.push(mainCorridor);
-    route.push({ x: end.x, y: 50 });
+    if (start.y !== 50) {
+      route.push({ x: start.x, y: 65, location: { id: 'c2-point', name: 'Коридор', type: 'elevator', x: start.x, y: 65 } });
+      route.push({ x: start.x, y: 50, location: { id: 'main-c2', name: 'Главный коридор', type: 'elevator', x: start.x, y: 50 } });
+    }
+    
+    if (start.x !== end.x) {
+      const midMezzX = (start.x + end.x) / 2;
+      route.push({ x: midMezzX, y: 50, location: { id: 'mezz-mid', name: 'Переход', type: 'elevator', x: midMezzX, y: 50 } });
+    }
+    
+    route.push({ x: end.x, y: 50, location: { id: 'turn-mezz', name: 'Поворот', type: 'elevator', x: end.x, y: 50 } });
+    route.push({ x: end.x, y: 42, location: { id: 'stairs-mezz', name: 'Лестница', type: 'escalator', x: end.x, y: 42 } });
     route.push({ x: end.x, y: 35, location: end });
   } else {
-    route.push(mainCorridor);
+    if (start.y !== 50) {
+      route.push({ x: start.x, y: 65, location: { id: 'c3-point', name: 'Коридор', type: 'elevator', x: start.x, y: 65 } });
+      route.push({ x: start.x, y: 50, location: { id: 'main-c3', name: 'Главный коридор', type: 'elevator', x: start.x, y: 50 } });
+    }
+    
+    if (start.x !== end.x) {
+      const midMainX = (start.x + end.x) / 2;
+      route.push({ x: midMainX, y: 50, location: { id: 'main-mid', name: 'Переход', type: 'elevator', x: midMainX, y: 50 } });
+    }
+    
     route.push({ x: end.x, y: 50, location: end });
   }
   
@@ -318,30 +360,69 @@ const Index = () => {
                       if (index === route.length - 1) return null;
                       const nextPoint = route[index + 1];
                       return (
-                        <line
-                          key={`route-${index}`}
-                          x1={point.x}
-                          y1={point.y}
-                          x2={nextPoint.x}
-                          y2={nextPoint.y}
-                          stroke="#60A5FA"
-                          strokeWidth="1"
-                          strokeLinecap="round"
-                        />
+                        <g key={`route-${index}`}>
+                          <line
+                            x1={point.x}
+                            y1={point.y}
+                            x2={nextPoint.x}
+                            y2={nextPoint.y}
+                            stroke="#60A5FA"
+                            strokeWidth="1.2"
+                            strokeLinecap="round"
+                            opacity="0.8"
+                          />
+                          <line
+                            x1={point.x}
+                            y1={point.y}
+                            x2={nextPoint.x}
+                            y2={nextPoint.y}
+                            stroke="#3B82F6"
+                            strokeWidth="0.4"
+                            strokeLinecap="round"
+                            strokeDasharray="1,1"
+                            className="animate-pulse"
+                          />
+                        </g>
                       );
                     })}
                     
                     {route.map((point, index) => {
-                      if (index === 0 || index === route.length - 1 || !point.location) return null;
+                      if (index === 0 || !point.location) return null;
+                      const isEndPoint = index === route.length - 1;
+                      const isTransitPoint = point.location.type === 'escalator' || point.location.type === 'elevator';
+                      
                       return (
-                        <circle
-                          key={`waypoint-${index}`}
-                          cx={point.x}
-                          cy={point.y}
-                          r="2"
-                          fill="#60A5FA"
-                          filter="url(#shadow)"
-                        />
+                        <g key={`waypoint-${index}`}>
+                          <circle
+                            cx={point.x}
+                            cy={point.y}
+                            r={isEndPoint ? "3.5" : isTransitPoint ? "2.5" : "1.8"}
+                            fill={isEndPoint ? "#3B82F6" : isTransitPoint ? "#60A5FA" : "#93C5FD"}
+                            filter="url(#shadow)"
+                            opacity="0.9"
+                          />
+                          {isTransitPoint && (
+                            <g transform={`translate(${point.x - 0.8}, ${point.y - 0.8}) scale(0.08)`}>
+                              <path
+                                d={getLocationIcon(point.location.type)}
+                                fill="white"
+                                stroke="white"
+                                strokeWidth="0.5"
+                              />
+                            </g>
+                          )}
+                          <text
+                            x={point.x}
+                            y={point.y - 4}
+                            fontSize="2.5"
+                            fill="#1E40AF"
+                            textAnchor="middle"
+                            fontWeight="600"
+                            opacity="0.9"
+                          >
+                            {point.location.name}
+                          </text>
+                        </g>
                       );
                     })}
                   </>
