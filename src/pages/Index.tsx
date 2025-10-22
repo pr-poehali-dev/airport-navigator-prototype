@@ -216,6 +216,53 @@ const Index = () => {
 
   const walkingTime = Math.ceil(distance / 80 * 60);
 
+  const generateInstructions = (routePoints: RoutePoint[]): string[] => {
+    const instructions: string[] = [];
+    
+    for (let i = 0; i < routePoints.length - 1; i++) {
+      const current = routePoints[i];
+      const next = routePoints[i + 1];
+      
+      if (!next.location) continue;
+      
+      const dx = next.x - current.x;
+      const dy = next.y - current.y;
+      const dist = Math.round(Math.sqrt(dx * dx + dy * dy) * 2);
+      
+      let direction = '';
+      if (Math.abs(dx) > Math.abs(dy)) {
+        direction = dx > 0 ? 'направо' : 'налево';
+      } else {
+        direction = dy > 0 ? 'вниз' : 'вверх';
+      }
+      
+      if (next.location.type === 'escalator') {
+        instructions.push(`Поднимитесь на эскалаторе`);
+      } else if (next.location.type === 'elevator' && next.location.name.includes('Коридор')) {
+        instructions.push(`Идите по коридору ${direction} (${dist} м)`);
+      } else if (next.location.name.includes('Переход')) {
+        instructions.push(`Следуйте ${direction} по переходу (${dist} м)`);
+      } else if (next.location.name.includes('Поворот')) {
+        instructions.push(`Поверните ${direction}`);
+      } else if (next.location.name.includes('Лестница')) {
+        instructions.push(`Спуститесь по лестнице`);
+      } else if (i === routePoints.length - 2) {
+        instructions.push(`Вы прибыли в точку назначения: ${next.location.name}`);
+      } else {
+        instructions.push(`Направляйтесь к точке «${next.location.name}» (${dist} м)`);
+      }
+    }
+    
+    return instructions;
+  };
+
+  const instructions = useMemo(() => {
+    if (route.length > 0 && routeActive) {
+      return generateInstructions(route);
+    }
+    return [];
+  }, [route, routeActive]);
+
   return (
     <div className="min-h-screen bg-background p-4 md:p-8">
       <div className="max-w-7xl mx-auto">
@@ -503,6 +550,28 @@ const Index = () => {
                 </div>
               ))}
             </div>
+
+            {routeActive && instructions.length > 0 && (
+              <div className="mt-6">
+                <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
+                  <Icon name="List" size={20} className="text-primary" />
+                  Пошаговые инструкции
+                </h3>
+                <div className="space-y-3">
+                  {instructions.map((instruction, index) => (
+                    <div
+                      key={index}
+                      className="flex gap-3 p-3 bg-accent/30 rounded-lg border border-border hover:border-primary/50 transition-all"
+                    >
+                      <div className="flex-shrink-0 w-8 h-8 rounded-full bg-primary text-primary-foreground flex items-center justify-center font-semibold text-sm">
+                        {index + 1}
+                      </div>
+                      <p className="flex-1 text-sm text-foreground pt-1">{instruction}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
           </Card>
         </div>
       </div>
