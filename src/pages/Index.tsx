@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -13,6 +13,12 @@ interface Location {
   type: LocationType;
   x: number;
   y: number;
+}
+
+interface RoutePoint {
+  x: number;
+  y: number;
+  location?: Location;
 }
 
 const locations: Location[] = [
@@ -59,6 +65,17 @@ const locationIcons: Record<LocationType, string> = {
 };
 
 const locationColors: Record<LocationType, string> = {
+  gate: '#3B82F6',
+  toilet: '#A78BFA',
+  escalator: '#4ADE80',
+  checkin: '#FB923C',
+  baggage: '#F472B6',
+  elevator: '#2DD4BF',
+  cafe: '#FBBF24',
+  shop: '#FB7185',
+};
+
+const locationColorsBg: Record<LocationType, string> = {
   gate: 'bg-blue-500',
   toilet: 'bg-purple-400',
   escalator: 'bg-green-400',
@@ -67,6 +84,56 @@ const locationColors: Record<LocationType, string> = {
   elevator: 'bg-teal-400',
   cafe: 'bg-amber-400',
   shop: 'bg-rose-400',
+};
+
+const getLocationIcon = (type: LocationType) => {
+  const iconPaths: Record<LocationType, string> = {
+    gate: 'M12 2L3 7v5c0 5.5 3.8 10.7 9 12 5.2-1.3 9-6.5 9-12V7l-9-5z',
+    toilet: 'M9 11V9c0-1.1.9-2 2-2s2 .9 2 2v2m-4 4h4m-8 4h12a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2z',
+    escalator: 'M12 5v14m-5-7l5 5 5-5',
+    checkin: 'M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2M9 5a2 2 0 0 0 2 2h2a2 2 0 0 0 2-2M9 5a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2m-6 9l2 2 4-4',
+    baggage: 'M8 7h8m-8 0v10a2 2 0 0 0 2 2h4a2 2 0 0 0 2-2V7m-8 0H6a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h12a1 1 0 0 1 1 1v2a1 1 0 0 1-1 1h-2',
+    elevator: 'M12 5v14m-5-7l5-5 5 5',
+    cafe: 'M18 8h1a4 4 0 0 1 0 8h-1M2 8h16v9a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4V8z',
+    shop: 'M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4H6zm0 0h12m-6 11a3 3 0 1 0 0-6 3 3 0 0 0 0 6z'
+  };
+  return iconPaths[type];
+};
+
+const calculateRoute = (start: RoutePoint, end: Location): RoutePoint[] => {
+  const route: RoutePoint[] = [start];
+  
+  const mainCorridor = { x: start.x, y: 50 };
+  
+  if (end.y === 20) {
+    route.push(mainCorridor);
+    
+    const escalator = end.x <= 50 ? locations.find(l => l.id === 'e1')! : locations.find(l => l.id === 'e2')!;
+    route.push({ x: escalator.x, y: 50, location: escalator });
+    route.push({ x: escalator.x, y: 20 });
+    route.push({ x: end.x, y: 20, location: end });
+  } else if (end.y === 80) {
+    route.push({ x: end.x, y: end.y, location: end });
+  } else if (end.y === 35) {
+    route.push(mainCorridor);
+    route.push({ x: end.x, y: 50 });
+    route.push({ x: end.x, y: 35, location: end });
+  } else {
+    route.push(mainCorridor);
+    route.push({ x: end.x, y: 50, location: end });
+  }
+  
+  return route;
+};
+
+const calculateDistance = (route: RoutePoint[]): number => {
+  let distance = 0;
+  for (let i = 0; i < route.length - 1; i++) {
+    const dx = route[i + 1].x - route[i].x;
+    const dy = route[i + 1].y - route[i].y;
+    distance += Math.sqrt(dx * dx + dy * dy);
+  }
+  return Math.round(distance * 2);
 };
 
 const Index = () => {
@@ -90,6 +157,22 @@ const Index = () => {
   };
 
   const startLocation = { x: 50, y: 90 };
+
+  const route = useMemo(() => {
+    if (selectedLocation && routeActive) {
+      return calculateRoute(startLocation, selectedLocation);
+    }
+    return [];
+  }, [selectedLocation, routeActive]);
+
+  const distance = useMemo(() => {
+    if (route.length > 0) {
+      return calculateDistance(route);
+    }
+    return 0;
+  }, [route]);
+
+  const walkingTime = Math.ceil(distance / 80 * 60);
 
   return (
     <div className="min-h-screen bg-background p-4 md:p-8">
@@ -135,7 +218,7 @@ const Index = () => {
                     }`}
                   >
                     <div className="flex items-center gap-3">
-                      <div className={`w-10 h-10 rounded-full ${locationColors[location.type]} flex items-center justify-center`}>
+                      <div className={`w-10 h-10 rounded-full ${locationColorsBg[location.type]} flex items-center justify-center`}>
                         <Icon name={locationIcons[location.type]} size={20} className="text-white" />
                       </div>
                       <div className="flex-1">
@@ -161,7 +244,7 @@ const Index = () => {
               <Card className="p-6 animate-fade-in">
                 <h3 className="text-lg font-semibold mb-3">Выбрано</h3>
                 <div className="flex items-center gap-3 mb-4">
-                  <div className={`w-12 h-12 rounded-full ${locationColors[selectedLocation.type]} flex items-center justify-center`}>
+                  <div className={`w-12 h-12 rounded-full ${locationColorsBg[selectedLocation.type]} flex items-center justify-center`}>
                     <Icon name={locationIcons[selectedLocation.type]} size={24} className="text-white" />
                   </div>
                   <div>
@@ -178,9 +261,29 @@ const Index = () => {
                     </Badge>
                   </div>
                 </div>
+                
+                {routeActive && distance > 0 && (
+                  <div className="grid grid-cols-2 gap-3 mb-4 p-3 bg-accent/50 rounded-lg">
+                    <div className="text-center">
+                      <div className="flex items-center justify-center gap-1 mb-1">
+                        <Icon name="Footprints" size={16} className="text-primary" />
+                        <p className="text-xs text-muted-foreground">Расстояние</p>
+                      </div>
+                      <p className="text-xl font-bold text-foreground">{distance} м</p>
+                    </div>
+                    <div className="text-center">
+                      <div className="flex items-center justify-center gap-1 mb-1">
+                        <Icon name="Clock" size={16} className="text-primary" />
+                        <p className="text-xs text-muted-foreground">Время</p>
+                      </div>
+                      <p className="text-xl font-bold text-foreground">{walkingTime} мин</p>
+                    </div>
+                  </div>
+                )}
+                
                 <Button onClick={handleNavigate} className="w-full" size="lg">
                   <Icon name="Navigation" size={20} className="mr-2" />
-                  Построить маршрут
+                  {routeActive ? 'Пересчитать маршрут' : 'Построить маршрут'}
                 </Button>
               </Card>
             )}
@@ -199,21 +302,49 @@ const Index = () => {
 
             <div className="relative w-full aspect-[16/10] bg-accent/30 rounded-xl overflow-hidden border-2 border-border">
               <svg className="w-full h-full" viewBox="0 0 100 100" preserveAspectRatio="xMidYMid meet">
+                <defs>
+                  <filter id="shadow">
+                    <feDropShadow dx="0" dy="0.2" stdDeviation="0.3" floodOpacity="0.3" />
+                  </filter>
+                </defs>
+
                 <rect x="5" y="15" width="90" height="10" fill="#E8D5C4" opacity="0.6" rx="2" />
                 <rect x="5" y="75" width="90" height="10" fill="#E8D5C4" opacity="0.6" rx="2" />
                 <rect x="5" y="30" width="90" height="40" fill="#E8D5C4" opacity="0.4" rx="2" />
 
-                {routeActive && selectedLocation && (
-                  <line
-                    x1={startLocation.x}
-                    y1={startLocation.y}
-                    x2={selectedLocation.x}
-                    y2={selectedLocation.y}
-                    stroke="#60A5FA"
-                    strokeWidth="0.5"
-                    strokeDasharray="2,2"
-                    className="animate-pulse"
-                  />
+                {routeActive && route.length > 0 && (
+                  <>
+                    {route.map((point, index) => {
+                      if (index === route.length - 1) return null;
+                      const nextPoint = route[index + 1];
+                      return (
+                        <line
+                          key={`route-${index}`}
+                          x1={point.x}
+                          y1={point.y}
+                          x2={nextPoint.x}
+                          y2={nextPoint.y}
+                          stroke="#60A5FA"
+                          strokeWidth="1"
+                          strokeLinecap="round"
+                        />
+                      );
+                    })}
+                    
+                    {route.map((point, index) => {
+                      if (index === 0 || index === route.length - 1 || !point.location) return null;
+                      return (
+                        <circle
+                          key={`waypoint-${index}`}
+                          cx={point.x}
+                          cy={point.y}
+                          r="2"
+                          fill="#60A5FA"
+                          filter="url(#shadow)"
+                        />
+                      );
+                    })}
+                  </>
                 )}
 
                 {locations.map((location) => {
@@ -222,26 +353,33 @@ const Index = () => {
                     <g
                       key={location.id}
                       onClick={() => handleLocationSelect(location)}
-                      className="cursor-pointer transition-transform hover:scale-110"
+                      className="cursor-pointer"
+                      style={{ transition: 'all 0.3s' }}
                     >
                       <circle
                         cx={location.x}
                         cy={location.y}
-                        r={isSelected ? '2.5' : '1.8'}
-                        className={`${
-                          isSelected ? locationColors[location.type] : locationColors[location.type]
-                        } transition-all`}
-                        fill="currentColor"
-                        opacity={isSelected ? '1' : '0.8'}
+                        r={isSelected ? '3.5' : '2.8'}
+                        fill={locationColors[location.type]}
+                        opacity="0.9"
+                        filter="url(#shadow)"
                       />
+                      <g transform={`translate(${location.x - 1}, ${location.y - 1}) scale(${isSelected ? 0.12 : 0.09})`}>
+                        <path
+                          d={getLocationIcon(location.type)}
+                          fill="white"
+                          stroke="white"
+                          strokeWidth="0.5"
+                        />
+                      </g>
                       {isSelected && (
                         <circle
                           cx={location.x}
                           cy={location.y}
-                          r="3.5"
+                          r="4.5"
                           fill="none"
                           stroke="#60A5FA"
-                          strokeWidth="0.3"
+                          strokeWidth="0.4"
                           className="animate-pulse"
                         />
                       )}
@@ -250,16 +388,17 @@ const Index = () => {
                 })}
 
                 <g>
-                  <circle cx={startLocation.x} cy={startLocation.y} r="2" fill="#EF4444" />
+                  <circle cx={startLocation.x} cy={startLocation.y} r="2.5" fill="#EF4444" filter="url(#shadow)" />
                   <circle
                     cx={startLocation.x}
                     cy={startLocation.y}
-                    r="3"
+                    r="4"
                     fill="none"
                     stroke="#EF4444"
-                    strokeWidth="0.3"
+                    strokeWidth="0.4"
                     className="animate-pulse"
                   />
+                  <text x={startLocation.x} y={startLocation.y + 6} fontSize="3" fill="#EF4444" textAnchor="middle" fontWeight="bold">ВЫ</text>
                 </g>
               </svg>
             </div>
@@ -267,7 +406,7 @@ const Index = () => {
             <div className="mt-6 grid grid-cols-2 md:grid-cols-4 gap-3">
               {Object.entries(locationIcons).map(([type, iconName]) => (
                 <div key={type} className="flex items-center gap-2">
-                  <div className={`w-8 h-8 rounded-full ${locationColors[type as LocationType]} flex items-center justify-center flex-shrink-0`}>
+                  <div className={`w-8 h-8 rounded-full ${locationColorsBg[type as LocationType]} flex items-center justify-center flex-shrink-0`}>
                     <Icon name={iconName} size={16} className="text-white" />
                   </div>
                   <span className="text-sm text-muted-foreground capitalize">
